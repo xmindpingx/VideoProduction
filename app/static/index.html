@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shorts Lab</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="app.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span>Shorts Lab</span><small>Phone clips in · vertical short out</small></div>
+  <div class="status" id="status" aria-live="polite"></div>
+</header>
+
+<main id="login" class="view" hidden>
+  <section class="card narrow">
+    <h1>Sign in</h1>
+    <p class="muted">Enter the access code from your server's <code>.env</code> file (<code>SHORTS_TOKEN</code>).</p>
+    <form id="login-form">
+      <label class="field"><span>Access code</span>
+        <input id="token" type="password" autocomplete="current-password" required minlength="16" autocapitalize="off" spellcheck="false">
+      </label>
+      <button class="btn primary" type="submit">Sign in</button>
+      <p class="error" id="login-error" role="alert"></p>
+    </form>
+  </section>
+</main>
+
+<main id="app" class="view" hidden>
+  <section class="card">
+    <div class="step"><b>1</b><h2>Your clips</h2></div>
+    <p class="muted">Add as many as you like: normal, 60 fps, or Slo-mo. The AI picks the best moments from all of them.</p>
+    <label class="drop" for="pick-video">
+      <input id="pick-video" type="file" accept="video/*,.mov,.mp4,.m4v" multiple>
+      <span class="plus" aria-hidden="true">+</span>
+      <span>Add videos</span>
+    </label>
+    <details class="tip">
+      <summary>iPhone tips for best quality</summary>
+      <ul>
+        <li>If the picker shows <em>"Compressing Video…"</em>, your iPhone is shrinking the file before upload. For full quality, save the clip to Files first (Share → Save to Files), then choose it with <em>Choose File</em> / <em>Browse</em>.</li>
+        <li>Slo-mo clips recorded at 120/240 fps can be slowed down smoothly. Set a clip's Slow-mo to <em>On</em> to force it.</li>
+        <li>Uploads go up in small pieces and resume after a dropped connection. Keep this page open until every bar is full. You can re-pick the same file to resume.</li>
+        <li>If Shorts Lab is reachable on your home network (see the README), opening it by the server's local address while on Wi-Fi skips the internet round trip and uploads faster.</li>
+      </ul>
+    </details>
+    <ul class="clips" id="clips"></ul>
+  </section>
+
+  <section class="card">
+    <div class="step"><b>2</b><h2>Music <span class="opt">optional</span></h2></div>
+    <p class="muted">Cuts land on the beat, and the music ducks under speech. Use music you have the rights to. To use a platform's trending sound, add it in the TikTok/Instagram app when you post.</p>
+    <label class="drop small" for="pick-music">
+      <input id="pick-music" type="file" accept="audio/*,.mp3,.m4a,.wav,.aac,.flac">
+      <span class="plus" aria-hidden="true">♪</span><span>Add a music track</span>
+    </label>
+    <ul class="clips" id="music"></ul>
+  </section>
+
+  <section class="card">
+    <div class="step"><b>3</b><h2>Direction</h2></div>
+    <div class="group" data-name="vibe">
+      <span class="label">Vibe</span>
+      <button type="button" data-value="hype" aria-pressed="true">Hype</button>
+      <button type="button" data-value="cinematic">Cinematic</button>
+      <button type="button" data-value="funny">Funny</button>
+      <button type="button" data-value="emotional">Emotional</button>
+      <button type="button" data-value="story">Story</button>
+      <button type="button" data-value="product">Product</button>
+    </div>
+    <div class="group" data-name="length">
+      <span class="label">Length</span>
+      <button type="button" data-value="15">15s</button>
+      <button type="button" data-value="30" aria-pressed="true">30s</button>
+      <button type="button" data-value="45">45s</button>
+      <button type="button" data-value="60">60s</button>
+    </div>
+    <label class="field"><span>What should it be about? <span class="opt">optional</span></span>
+      <textarea id="prompt" rows="2" maxlength="800" placeholder="e.g. Open on the car reveal, end on the crowd cheering"></textarea>
+    </label>
+    <div class="group" data-name="captions">
+      <span class="label">Captions</span>
+      <button type="button" data-value="pop" aria-pressed="true">Pop</button>
+      <button type="button" data-value="karaoke">Karaoke</button>
+      <button type="button" data-value="clean">Clean</button>
+      <button type="button" data-value="off">Off</button>
+    </div>
+    <div class="group" data-name="look">
+      <span class="label">Finish</span>
+      <button type="button" data-value="off">Clean</button>
+      <button type="button" data-value="subtle" aria-pressed="true">Subtle film</button>
+      <button type="button" data-value="film">Full film</button>
+    </div>
+    <div class="group" data-name="fps">
+      <span class="label">Frame rate</span>
+      <button type="button" data-value="24">24 cinematic</button>
+      <button type="button" data-value="30" aria-pressed="true">30</button>
+      <button type="button" data-value="60">60 smooth</button>
+    </div>
+    <details class="more">
+      <summary>AI transitions, sound and more</summary>
+      <label class="toggle"><input type="checkbox" id="ai_transitions" checked><span>End-Frame Motion transitions</span></label>
+      <p class="muted small" id="gen-note">The last frame of a shot is turned back into motion with a camera move, so the next shot flows in.</p>
+      <div class="group" data-name="effects">
+        <span class="label">Transition prompt</span>
+        <button type="button" data-value="camera" aria-pressed="true">Camera only</button>
+        <button type="button" data-value="atmosphere">+ Light &amp; atmosphere</button>
+        <button type="button" data-value="fantastical">+ Fantastical</button>
+      </div>
+      <div class="group" data-name="music_mode">
+        <span class="label">Sound</span>
+        <button type="button" data-value="mix" aria-pressed="true">Voice + music</button>
+        <button type="button" data-value="music_only">Music only</button>
+        <button type="button" data-value="original_only">Original only</button>
+      </div>
+      <label class="toggle"><input type="checkbox" id="clean_audio" checked><span>Clean up dialogue (remove background noise)</span></label>
+      <label class="toggle"><input type="checkbox" id="punch_in" checked><span>Punch-in zooms on talking shots</span></label>
+      <label class="toggle"><input type="checkbox" id="hook_title" checked><span>Hook title in the first seconds</span></label>
+    </details>
+  </section>
+
+  <section class="card" id="jobs-card">
+    <div class="step"><b>4</b><h2>Your shorts</h2></div>
+    <ul class="jobs" id="jobs"><li class="muted empty">Nothing made yet.</li></ul>
+    <button class="btn ghost" id="logout" type="button">Sign out</button>
+  </section>
+
+  <div class="dock">
+    <button class="btn primary" id="make" type="button" disabled>Make my short</button>
+    <p class="muted small" id="make-note" aria-live="polite">Add at least one clip.</p>
+  </div>
+</main>
+
+<template id="clip-tpl">
+  <li class="clip">
+    <div class="thumb"><img alt="" loading="lazy"><span class="badge"></span></div>
+    <div class="info">
+      <div class="row"><label class="use"><input type="checkbox" checked><span class="name"></span></label><button type="button" class="x" aria-label="Remove">×</button></div>
+      <div class="meta muted small"></div>
+      <div class="bar"><i></i></div>
+      <div class="state small"></div>
+      <div class="opts" hidden>
+        <label class="slow"><span>Slow-mo</span>
+          <select><option value="auto">Auto</option><option value="on">On</option><option value="off">Off</option></select>
+        </label>
+        <input class="note" type="text" maxlength="500" placeholder="What's in this clip? (helps the AI)">
+      </div>
+    </div>
+  </li>
+</template>
+
+<template id="job-tpl">
+  <li class="job">
+    <div class="row"><strong class="title"></strong><span class="pill"></span></div>
+    <div class="stage muted small"></div>
+    <div class="bar"><i></i></div>
+    <div class="result" hidden>
+      <video playsinline controls preload="metadata"></video>
+      <div class="post"></div>
+      <ul class="warn small"></ul>
+      <div class="actions">
+        <a class="btn primary save" download>Save video</a>
+        <button type="button" class="btn share">Share</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn ghost remix" hidden>Remix with current direction</button>
+      <button type="button" class="btn ghost cancel" hidden>Cancel</button>
+      <button type="button" class="btn ghost del" hidden>Delete</button>
+      <button type="button" class="btn ghost logbtn">Details</button>
+    </div>
+    <pre class="log" hidden></pre>
+  </li>
+</template>
+</body>
+</html>

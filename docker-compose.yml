@@ -1,0 +1,65 @@
+# VideoProduction / Shorts Lab: phone clips in, vertical short out. Everything self-hosted and free.
+#   cp .env.example .env   (fill in SHORTS_TOKEN and RENDER_GID)
+#   docker compose up -d --build
+#
+# The worker and ComfyUI run on the AMD Radeon GPU (ROCm + VA-API): /dev/kfd and /dev/dri are passed in, and the
+# container joins the host's video and render groups so it may open them. Ollama and Open WebUI are your existing ones.
+name: videoproduction
+
+x-app: &app
+  image: videoproduction:latest
+  build:   # one image for all three services (the build is cached after the first)
+    context: ./app
+    args:
+      TORCH_INDEX: ${TORCH_INDEX:-https://download.pytorch.org/whl/rocm6.4}
+      TORCH_VERSION: ${TORCH_VERSION:-2.8.0}
+      INSTALL_DEMUCS: ${INSTALL_DEMUCS:-true}
+      INSTALL_COMFYUI: ${INSTALL_COMFYUI:-true}
+  env_file: .env
+  volumes:
+    - ${DATA_PATH:-./data}:/data
+  extra_hosts:
+    - "host.docker.internal:host-gateway"   # reach Ollama / Open WebUI published on the host
+  restart: unless-stopped
+
+x-amd-gpu: &amd-gpu
+  devices:
+    - /dev/kfd   # ROCm compute (PyTorch: Whisper, Demucs, ComfyUI)
+    - /dev/dri   # GPU render node (also VA-API hardware video decode/encode)
+  group_add:
+    - "${VIDEO_GID:-44}"
+    - "${RENDER_GID:?Set RENDER_GID in .env (getent group render | cut -d: -f3)}"
+  security_opt:
+    - seccomp=unconfined   # recommended by AMD for ROCm containers
+  shm_size: "8gb"
+  environment:
+    HSA_OVERRIDE_GFX_VERSION: "${HSA_OVERRIDE_GFX_VERSION:-10.3.0}"   # RX 6800 is gfx1030 = 10.3.0
+
+services:
+  web:
+    <<: *app
+    command: ["uvicorn", "shorts.api:app", "--host", "0.0.0.0", "--port", "8590", "--proxy-headers", "--forwarded-allow-ips", "*"]
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${PORT:-8590}:8590"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8590/api/ping', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    <<: [*app, *amd-gpu]
+    command: ["python", "-m", "shorts.worker"]
+    stop_grace_period: 30s
+    depends_on:
+      web:
+        condition: service_started
+
+  comfyui:
+    <<: [*app, *amd-gpu]
+    command: ["sh", "-c", "mkdir -p /data/comfyui/custom_nodes /data/comfyui/models /data/comfyui/input /data/comfyui/output /data/comfyui/user && exec /opt/comfy-venv/bin/python /opt/ComfyUI/main.py --listen 0.0.0.0 --port 8188 --base-directory /data/comfyui --disable-auto-launch"]
+    ports:
+      - "${COMFY_BIND_ADDR:-127.0.0.1}:${COMFY_PORT:-8188}:8188"   # open http://localhost:8188 to set up the workflow
+    depends_on:
+      web:
+        condition: service_started
