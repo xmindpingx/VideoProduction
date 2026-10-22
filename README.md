@@ -101,6 +101,10 @@ Diffusion also work; the camera prompt is simply not used.
 
 Already running ComfyUI elsewhere? Set `COMFYUI_URL` to it and remove the `comfyui` service.
 
+**LTX-2.3 image + audio to video on the RX 6800:** `comfyui/ltx23/` has ComfyUI's official LTX-2.3 template set up
+for 14 GB of VRAM, a GGUF version, and a model checker that finds the cause of `ValueError: invalid tokenizer`. See
+[comfyui/ltx23/README.md](comfyui/ltx23/README.md).
+
 ### Using it from your phone
 
 - **Anywhere:** in your Cloudflare Tunnel, add a public hostname (e.g. `shorts.yourdomain.com`) pointing at
