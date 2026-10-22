@@ -57,7 +57,7 @@ services:
 
   comfyui:
     <<: [*app, *amd-gpu]
-    command: ["sh", "-c", "mkdir -p /data/comfyui/custom_nodes /data/comfyui/models /data/comfyui/input /data/comfyui/output /data/comfyui/user && exec /opt/comfy-venv/bin/python /opt/ComfyUI/main.py --listen 0.0.0.0 --port 8188 --base-directory /data/comfyui --disable-auto-launch"]
+    command: ["sh", "-c", "mkdir -p /data/comfyui/custom_nodes /data/comfyui/models /data/comfyui/input /data/comfyui/output /data/comfyui/user && exec /opt/comfy-venv/bin/python /opt/ComfyUI/main.py --listen 0.0.0.0 --port 8188 --base-directory /data/comfyui --disable-auto-launch ${COMFY_ARGS:-}"]
     ports:
       - "${COMFY_BIND_ADDR:-127.0.0.1}:${COMFY_PORT:-8188}:8188"   # open http://localhost:8188 to set up the workflow
     depends_on:
